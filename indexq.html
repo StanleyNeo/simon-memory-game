@@ -1,0 +1,212 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { motion } from 'framer-motion';
+
+// Mock sound URLs — in real app, replace with actual public/sounds/*.mp3 paths
+const SOUND_MAP = {
+  red: "https://www.soundjay.com/buttons/sounds/button-09.mp3",
+  blue: "https://www.soundjay.com/buttons/sounds/button-10.mp3",
+  green: "https://www.soundjay.com/buttons/sounds/button-11.mp3",
+  yellow: "https://www.soundjay.com/buttons/sounds/button-12.mp3",
+  wrong: "https://www.soundjay.com/misc/sounds/buzzer-x.mp3",
+};
+
+const COLORS = ["red", "blue", "green", "yellow"];
+const COLOR_STYLES = {
+  red: { base: "bg-red-500", glow: "shadow-red-400/70", pressed: "bg-red-700" },
+  blue: { base: "bg-blue-500", glow: "shadow-blue-400/70", pressed: "bg-blue-700" },
+  green: { base: "bg-green-500", glow: "shadow-green-400/70", pressed: "bg-green-700" },
+  yellow: { base: "bg-yellow-500", glow: "shadow-yellow-400/70", pressed: "bg-yellow-700" },
+};
+
+export default function App() {
+  const [gamePattern, setGamePattern] = useState([]);
+  const [userPattern, setUserPattern] = useState([]);
+  const [level, setLevel] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [gameOver, setGameOver] = useState(false);
+  const [activeButton, setActiveButton] = useState(null);
+  const timeoutRef = useRef();
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  const playSound = useCallback((name) => {
+    const soundUrl = SOUND_MAP[name];
+    if (!soundUrl) return;
+    const audio = new Audio(soundUrl);
+    audio.volume = 0.3;
+    audio.play().catch(e => console.warn("Audio play prevented:", e));
+  }, []);
+
+  const flashButton = useCallback((color) => {
+    return new Promise((resolve) => {
+      setActiveButton(color);
+      playSound(color);
+      timeoutRef.current = setTimeout(() => {
+        setActiveButton(null);
+        resolve();
+      }, 500);
+    });
+  }, [playSound]);
+
+  const nextSequence = useCallback(async () => {
+    if (isAnimating) return;
+    setIsAnimating(true);
+    setUserPattern([]);
+    setLevel(prev => prev + 1);
+
+    // Add new color
+    const randomColor = COLORS[Math.floor(Math.random() * 4)];
+    setGamePattern(prev => [...prev, randomColor]);
+
+    // Animate sequence
+    for (let i = 0; i < gamePattern.length + 1; i++) {
+      await new Promise(r => timeoutRef.current = setTimeout(r, 600));
+      if (i < gamePattern.length) {
+        await flashButton(gamePattern[i]);
+      } else {
+        await flashButton(randomColor);
+      }
+    }
+
+    setIsAnimating(false);
+  }, [gamePattern.length, flashButton, isAnimating]);
+
+  const startGame = useCallback(() => {
+    if (isPlaying) return;
+    setLevel(0);
+    setGamePattern([]);
+    setUserPattern([]);
+    setGameOver(false);
+    setIsPlaying(true);
+    timeoutRef.current = setTimeout(() => {
+      nextSequence();
+    }, 800);
+  }, [isPlaying, nextSequence]);
+
+  const handleButtonClick = useCallback(async (color) => {
+    if (!isPlaying || isAnimating || gameOver) return;
+
+    const newUserPattern = [...userPattern, color];
+    setUserPattern(newUserPattern);
+    playSound(color);
+
+    // Visual press feedback
+    const btn = document.getElementById(color);
+    if (btn) {
+      btn.classList.add('scale-95', 'ring-4', 'ring-white', 'ring-opacity-80');
+      setTimeout(() => {
+        btn.classList.remove('scale-95', 'ring-4', 'ring-white', 'ring-opacity-80');
+      }, 150);
+    }
+
+    const currentStep = newUserPattern.length - 1;
+    const expectedColor = gamePattern[currentStep];
+
+    if (expectedColor === color) {
+      if (newUserPattern.length === gamePattern.length) {
+        // Correct full sequence
+        timeoutRef.current = setTimeout(() => {
+          nextSequence();
+        }, 1000);
+      }
+    } else {
+      // Wrong!
+      setGameOver(true);
+      setIsPlaying(false);
+      playSound("wrong");
+      
+      // Flash screen red
+      document.body.classList.add('bg-red-500', 'opacity-80');
+      setTimeout(() => {
+        document.body.classList.remove('bg-red-500', 'opacity-80');
+        document.body.classList.add('bg-gradient-to-br', 'from-gray-900', 'to-blue-900');
+        setTimeout(() => document.body.classList.remove('opacity-80'), 50);
+      }, 200);
+    }
+  }, [isPlaying, isAnimating, gameOver, userPattern, gamePattern, playSound, nextSequence]);
+
+  // Keyboard start: Any key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!isPlaying && !gameOver) {
+        startGame();
+      } else if (gameOver) {
+        startGame();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPlaying, gameOver, startGame]);
+
+  const displayTitle = gameOver 
+    ? "Game Over! Press Any Key"
+    : isPlaying 
+      ? `Level ${level}` 
+      : "Simon Game";
+
+  return (
+    <>
+      <style jsx>{`
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+      `}</style>
+
+      <div className="min-h-screen w-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-gray-900 to-blue-900 text-yellow-300 font-mono">
+        <motion.h1 
+          className="text-2xl sm:text-3xl md:text-4xl font-bold mb-8 text-center press-start"
+          initial={{ y: -30, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        >
+          {displayTitle}
+        </motion.h1>
+
+        <div className="grid grid-cols-2 gap-4 sm:gap-6">
+          {COLORS.map(color => {
+            const isActive = activeButton === color;
+            const style = COLOR_STYLES[color];
+            return (
+              <motion.button
+                key={color}
+                id={color}
+                className={`
+                  w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 rounded-full border-4 border-gray-800
+                  flex items-center justify-center shadow-lg transition-all duration-150
+                  ${style.base} ${isActive ? style.pressed : ''} 
+                  ${isActive ? `shadow-lg ${style.glow} scale-105` : ''}
+                  focus:outline-none
+                `}
+                onClick={() => handleButtonClick(color)}
+                whileTap={{ scale: 0.92 }}
+                whileHover={!isAnimating && isPlaying ? { scale: 1.03 } : {}}
+              />
+            );
+          })}
+        </div>
+
+        <div className="mt-12 text-sm text-gray-400 max-w-md text-center">
+          <p>🎮 Watch the sequence → Repeat it exactly</p>
+          <p className="mt-2">⌨️ Press any key to start / restart</p>
+        </div>
+      </div>
+
+      <style jsx global>{`
+        .press-start {
+          font-family: 'Press Start 2P', cursive;
+          letter-spacing: -0.05em;
+          text-shadow: 0 0 10px rgba(254, 242, 191, 0.5);
+        }
+        body {
+          background-color: #0f172a;
+          color: #fef2bf;
+          font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+      `}</style>
+    </>
+  );
+}

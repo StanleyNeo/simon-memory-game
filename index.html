@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simon - Memory Game</title>
+  <style>
+    :root {
+      --primary-bg: #1a1a2e;
+      --secondary-bg: #16213e;
+      --accent: #0f3460;
+      --highlight: #e94560;
+      --text: #f1faee;
+      --green: #2ecc71;
+      --red: #e74c3c;
+      --yellow: #f1c40f;
+      --blue: #3498db;
+      --shadow: rgba(0, 0, 0, 0.3);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, var(--primary-bg), var(--secondary-bg));
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 500px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 30px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-size: 2.8rem;
+      margin-bottom: 10px;
+      background: linear-gradient(to right, var(--green), var(--blue), var(--yellow), var(--red));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 0 2px 4px var(--shadow);
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      opacity: 0.8;
+      margin-bottom: 20px;
+    }
+
+    .game-info {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      background: var(--accent);
+      padding: 15px 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px var(--shadow);
+      margin-bottom: 10px;
+    }
+
+    .info-box {
+      text-align: center;
+    }
+
+    .info-label {
+      font-size: 0.9rem;
+      opacity: 0.7;
+      margin-bottom: 5px;
+    }
+
+    .info-value {
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+
+    #level-title {
+      font-size: 1.8rem;
+      font-weight: 600;
+      text-align: center;
+      padding: 15px;
+      background: var(--accent);
+      border-radius: 12px;
+      width: 100%;
+      box-shadow: 0 4px 15px var(--shadow);
+      transition: all 0.3s ease;
+    }
+
+    .game-board {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+      aspect-ratio: 1/1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .btn {
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 6px 0 rgba(0, 0, 0, 0.2), 0 8px 20px var(--shadow);
+      border: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.1);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .btn:hover::after {
+      opacity: 1;
+    }
+
+    .btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2), 0 4px 10px var(--shadow);
+    }
+
+    .green {
+      background: linear-gradient(135deg, var(--green), #27ae60);
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .red {
+      background: linear-gradient(135deg, var(--red), #c0392b);
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .yellow {
+      background: linear-gradient(135deg, var(--yellow), #f39c12);
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .blue {
+      background: linear-gradient(135deg, var(--blue), #2980b9);
+      grid-column: 2;
+      grid-row: 2;
+    }
+
+    .pressed {
+      transform: scale(0.95);
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2), 0 4px 10px var(--shadow);
+      filter: brightness(1.3);
+    }
+
+    .game-over {
+      background-color: var(--highlight);
+      animation: shake 0.5s;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+      20%, 40%, 60%, 80% { transform: translateX(5px); }
+    }
+
+    .controls {
+      display: flex;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .control-btn {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 8px var(--shadow);
+    }
+
+    .start-btn {
+      background: var(--green);
+      color: white;
+    }
+
+    .reset-btn {
+      background: var(--highlight);
+      color: white;
+    }
+
+    .control-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 12px var(--shadow);
+    }
+
+    .control-btn:active {
+      transform: translateY(1px);
+    }
+
+    .instructions {
+      margin-top: 30px;
+      background: var(--accent);
+      padding: 20px;
+      border-radius: 12px;
+      width: 100%;
+      box-shadow: 0 4px 15px var(--shadow);
+    }
+
+    .instructions h2 {
+      margin-bottom: 15px;
+      font-size: 1.4rem;
+      color: var(--text);
+    }
+
+    .instructions p {
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+
+    .instructions ol {
+      margin-left: 20px;
+      margin-bottom: 15px;
+    }
+
+    .instructions li {
+      margin-bottom: 8px;
+    }
+
+    .footer {
+      margin-top: 30px;
+      text-align: center;
+      font-size: 0.9rem;
+      opacity: 0.7;
+    }
+
+    @media (max-width: 500px) {
+      h1 {
+        font-size: 2.2rem;
+      }
+      
+      .game-board {
+        max-width: 300px;
+      }
+      
+      .controls {
+        flex-direction: column;
+        width: 100%;
+      }
+      
+      .control-btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>SIMON</h1>
+      <p class="subtitle">Test your memory with this classic pattern recall game</p>
+    </div>
+    
+    <div class="game-info">
+      <div class="info-box">
+        <div class="info-label">LEVEL</div>
+        <div class="info-value" id="level-display">0</div>
+      </div>
+      <div class="info-box">
+        <div class="info-label">SCORE</div>
+        <div class="info-value" id="score-display">0</div>
+      </div>
+      <div class="info-box">
+        <div class="info-label">BEST</div>
+        <div class="info-value" id="best-display">0</div>
+      </div>
+    </div>
+    
+    <h1 id="level-title">Press Start to Play</h1>
+    
+    <div class="game-board">
+      <div type="button" id="green" class="btn green"></div>
+      <div type="button" id="red" class="btn red"></div>
+      <div type="button" id="yellow" class="btn yellow"></div>
+      <div type="button" id="blue" class="btn blue"></div>
+    </div>
+    
+    <div class="controls">
+      <button class="control-btn start-btn" id="start-btn">Start Game</button>
+      <button class="control-btn reset-btn" id="reset-btn">Reset</button>
+    </div>
+    
+    <div class="instructions">
+      <h2>How to Play</h2>
+      <ol>
+        <li>Watch the sequence of colors that Simon shows</li>
+        <li>Repeat the sequence by clicking the colors in the same order</li>
+        <li>The sequence gets longer each round</li>
+        <li>If you make a mistake, the game is over</li>
+        <li>Try to reach the highest level possible!</li>
+      </ol>
+      <p>You can also press any key to start the game.</p>
+    </div>
+    
+    <div class="footer">
+      <p>Simon Memory Game &copy; 2023</p>
+    </div>
+  </div>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script>
+    // Game variables
+    var buttonColours = ["red", "blue", "green", "yellow"];
+    var gamePattern = [];
+    var userClickedPattern = [];
+    var started = false;
+    var level = 0;
+    var score = 0;
+    var bestScore = localStorage.getItem('simonBestScore') || 0;
+
+    // Initialize best score display
+    $("#best-display").text(bestScore);
+
+    // Start game with button
+    $("#start-btn").click(function() {
+      if (!started) {
+        startGame();
+      }
+    });
+
+    // Start game with keyboard
+    $(document).keypress(function() {
+      if (!started) {
+        startGame();
+      }
+    });
+
+    // Reset game
+    $("#reset-btn").click(function() {
+      resetGame();
+    });
+
+    // User button click
+    $(".btn").click(function() {
+      if (started) {
+        var userChosenColour = $(this).attr("id");
+        userClickedPattern.push(userChosenColour);
+
+        playSound(userChosenColour);
+        animatePress(userChosenColour);
+
+        checkAnswer(userClickedPattern.length - 1);
+      }
+    });
+
+    function startGame() {
+      started = true;
+      level = 0;
+      score = 0;
+      gamePattern = [];
+      userClickedPattern = [];
+      $("#level-title").text("Get ready...");
+      $("#start-btn").prop("disabled", true);
+      
+      setTimeout(function() {
+        nextSequence();
+      }, 1000);
+    }
+
+    function resetGame() {
+      started = false;
+      level = 0;
+      score = 0;
+      gamePattern = [];
+      userClickedPattern = [];
+      $("#level-title").text("Press Start to Play");
+      $("#level-display").text("0");
+      $("#score-display").text("0");
+      $("#start-btn").prop("disabled", false);
+      $("body").removeClass("game-over");
+    }
+
+    function nextSequence() {
+      userClickedPattern = [];
+      level++;
+      score += level * 10;
+      
+      $("#level-title").text("Level " + level);
+      $("#level-display").text(level);
+      $("#score-display").text(score);
+      
+      var randomNumber = Math.floor(Math.random() * 4);
+      var randomChosenColour = buttonColours[randomNumber];
+      gamePattern.push(randomChosenColour);
+
+      // Animate the button
+      $("#" + randomChosenColour).fadeOut(100).fadeIn(100);
+      playSound(randomChosenColour);
+    }
+
+    function checkAnswer(currentLevel) {
+      if (gamePattern[currentLevel] === userClickedPattern[currentLevel]) {
+        if (userClickedPattern.length === gamePattern.length) {
+          setTimeout(function() {
+            nextSequence();
+          }, 1000);
+        }
+      } else {
+        playSound("wrong");
+        $("body").addClass("game-over");
+        $("#level-title").text("Game Over! Final Score: " + score);
+        
+        // Update best score if needed
+        if (score > bestScore) {
+          bestScore = score;
+          localStorage.setItem('simonBestScore', bestScore);
+          $("#best-display").text(bestScore);
+        }
+        
+        setTimeout(function() {
+          $("body").removeClass("game-over");
+        }, 1500);
+        
+        // Re-enable start button after game over
+        setTimeout(function() {
+          $("#start-btn").prop("disabled", false);
+          started = false;
+        }, 2000);
+      }
+    }
+
+    function animatePress(currentColor) {
+      $("#" + currentColor).addClass("pressed");
+      setTimeout(function() {
+        $("#" + currentColor).removeClass("pressed");
+      }, 100);
+    }
+
+    function playSound(name) {
+      // In a real implementation, you would link to actual sound files
+      // For this demo, we'll simulate sounds with beep tones
+      var audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      var oscillator = audioContext.createOscillator();
+      var gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Set different frequencies for different colors
+      switch(name) {
+        case "green":
+          oscillator.frequency.value = 523.25; // C5
+          break;
+        case "red":
+          oscillator.frequency.value = 587.33; // D5
+          break;
+        case "yellow":
+          oscillator.frequency.value = 659.25; // E5
+          break;
+        case "blue":
+          oscillator.frequency.value = 698.46; // F5
+          break;
+        case "wrong":
+          oscillator.frequency.value = 220; // A3
+          break;
+      }
+      
+      if (name === "wrong") {
+        gainNode.gain.value = 0.3;
+        oscillator.start();
+        setTimeout(function() {
+          oscillator.stop();
+        }, 500);
+      } else {
+        gainNode.gain.value = 0.1;
+        oscillator.start();
+        setTimeout(function() {
+          oscillator.stop();
+        }, 300);
+      }
+    }
+  </script>
+</body>
+</html>
